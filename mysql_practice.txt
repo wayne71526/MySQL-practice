@@ -1,0 +1,246 @@
+# 建立資料表，PRIMARY KEY 表示此變數的變數值不能重複
+CREATE TABLE sailors (
+    sname VARCHAR(15) PRIMARY KEY,
+    rating INT
+);
+
+CREATE TABLE boats(
+    bname VARCHAR(15),
+    color VARCHAR(10),
+    rating INT,
+    PRIMARY KEY(bname)
+);
+
+CREATE TABLE days(
+    day VARCHAR(15),
+    PRIMARY KEY(day)
+);
+
+CREATE TABLE reservations(
+    sname VARCHAR(15),
+    bname VARCHAR(15),
+    day VARCHAR(15),
+    PRIMARY KEY(sname, bname, day), # 表示三個欄位的組合不能重複
+    FOREIGN KEY(sname) REFERENCES sailors(sname),
+    FOREIGN KEY(bname) REFERENCES boats(bname),
+    FOREIGN KEY(day) REFERENCES days(day)
+);
+
+
+# 刪除資料表
+DROP TABLE reservations;
+DROP TABLE sailors, boats, days;
+
+
+# 輸入資料
+INSERT INTO sailors VALUES ('Brutus', 1);
+INSERT INTO sailors VALUES ('Andy', 8);
+INSERT INTO sailors VALUES ('Horatio', 7);
+INSERT INTO sailors VALUES ('Rusty', 8);
+INSERT INTO sailors VALUES ('Bob', 1);
+INSERT INTO sailors VALUES ('Wayne', NULL);
+
+
+INSERT INTO boats VALUES ('SpeedQueen', 'white', 9);
+INSERT INTO boats VALUES ('Interlake', 'red', 8);
+INSERT INTO boats VALUES ('Marine', 'blue', 7);
+INSERT INTO boats VALUES ('Bay', 'red', 3);
+
+
+INSERT INTO days VALUES ('Monday');
+INSERT INTO days VALUES ('Tuesday');
+INSERT INTO days VALUES ('Wednesday');
+INSERT INTO days VALUES ('Thursday');
+INSERT INTO days VALUES ('Friday');
+INSERT INTO days VALUES ('Saturday');
+INSERT INTO days VALUES ('Sunday');
+
+
+INSERT INTO reservations VALUES ('Andy', 'Interlake', 'Monday');
+INSERT INTO reservations VALUES ('Andy', 'Bay', 'Wednesday');
+INSERT INTO reservations VALUES ('Andy', 'Marine', 'Saturday');
+INSERT INTO reservations VALUES ('Rusty', 'Bay', 'Sunday');
+INSERT INTO reservations VALUES ('Rusty', 'Interlake', 'Wednesday');
+INSERT INTO reservations VALUES ('Rusty', 'Marine', 'Wednesday');
+INSERT INTO reservations VALUES ('Bob', 'Bay', 'Monday');
+
+
+# 查詢資料，* 表示選取所有資料
+# -- SELECT [DISTINCT](可寫可不寫，寫了表示重複的結果不顯示) select-list(欄位名稱)
+# -- FROM from-list(TABLE名稱)
+# -- WHERE qulification(條件，不一定要寫)
+
+SELECT * FROM sailors;  # 顯示 sailors 這個 table
+SELECT * FROM reservations;
+
+SELECT *
+FROM sailors
+WHERE rating > 5;
+
+# 顯示幾筆資料：就算一筆資料中很多 NULL 也算一筆
+SELECT COUNT(*)
+FROM sailors;
+
+# 顯示 rating 有值的資料有幾筆
+SELECT COUNT(rating)
+FROM sailors;
+
+# 顯示 rating 的最小值
+SELECT MIN(rating)
+FROM sailors;
+
+# 顯示 rating 的最大值
+SELECT MAX(rating)
+FROM sailors;
+
+# 顯示 rating 的總和
+SELECT SUM(rating)
+FROM sailors;
+
+# 顯示 rating 的平均(不考慮 rating 為 NULL 的資料)
+SELECT AVG(rating)
+FROM sailors;
+
+# 顯示相同 color 的資料有幾筆
+SELECT color, COUNT(*)
+FROM boats
+GROUP BY color;
+
+# 將資料依照 rating 由小排到大
+SELECT *
+FROM sailors
+ORDER BY rating;  # 預設值為遞增
+
+# 將資料依照 rating 由大排到小
+SELECT *
+FROM sailors
+ORDER BY rating DESC;  # 預設值為遞增
+
+
+/* 1. 列出所有在星期三預約的船名 跟它們的顏色 */
+SELECT b.bname, b.color
+FROM boats b, reservations r
+WHERE r.day = 'Wednesday' AND b.bname = r.bname;
+
+
+/* 2. 列出最高評分的水手 */
+
+/* (i) 用 MAX */
+SELECT s.sname
+FROM sailors s 
+WHERE s.rating = (
+    SELECT MAX(rating)
+    FROM sailors
+);
+
+/* 不用 MAX. */ 
+SELECT s1.sname
+FROM sailors s1
+WHERE NOT EXISTS (   # NOT EXISTS 表示後面的敘述不能有結果
+    SELECT s2.sname
+    FROM sailors s2
+    WHERE s1.rating < s2.rating
+);
+
+
+/* 3. 列出所有有在同一天預約船的水手名字，避免重複 */
+SELECT DISTINCT r1.sname, r2.sname
+FROM reservations r1, reservations r2
+WHERE r1.day = r2.day AND r1.sname <> r2.sname; # <> 表示不等於
+
+
+/* 4. 每一天，列出那天預約紅色船的數量。
+如果那天沒紅色船被預約，數字應該是0，如果那一天完全沒有出現在預約表格裡，
+那天數字也應該要是0。 */
+SELECT d.day, IFNULL(sub.num, 0)
+FROM days d LEFT OUTER JOIN(
+    SELECT r.day, COUNT(*) AS num
+    FROM reservations r, boats b
+    WHERE r.bname = b.bname AND b.color = 'red' 
+    GROUP BY r.day
+) AS sub
+ON d.day = sub.day;
+
+
+/* 5. 列出只有紅船被預約的那些天 */
+SELECT DISTINCT r.day
+FROM reservations r, boats b
+WHERE b.color = 'red' AND r.bname = b.bname AND NOT EXISTS(
+    # 查看不是紅色的船被預約的情形
+    SELECT r2.day
+    FROM reservations r2, boats b2
+    WHERE r.day = r2.day AND b2.color <> 'red' AND r2.bname = b2.bname
+);
+
+
+/* 6. 列出沒有紅船預約的天。如果那天沒出現在預約表格裡，也應該是0。 */
+SELECT d.day
+FROM days d
+WHERE NOT EXISTS(
+    # 查看紅色的船被預約的情形
+    SELECT r.day
+    FROM boats b, reservations r
+    WHERE b.bname = r.bname AND b.color = 'red' AND d.day = r.day
+);
+
+
+/* 7. 列出全部紅船都被預約的天，如果不存在紅船，那每天都該吻合。 
+
+/* – 使用 NOT IN */
+# 步驟 1：建立 table1：假設一到日皆有兩艘紅船的預約
+# 步驟 2；建立 table2：真正有紅船的預約有哪些天
+# 檢查 table1 有無 table2 的資料，若有將其刪除，剩下為當天沒預約的紅船
+# 若 days 的 day 不在這些天中，表示紅船皆被預約出去
+SELECT d1.day
+FROM days d1
+WHERE d1.day NOT IN(
+    SELECT d2.day
+    FROM days d2, boats b1
+    WHERE b1.color = 'red' AND b1.bname NOT IN(
+        SELECT b2.bname
+        FROM boats b2, reservations r
+        WHERE r.bname = b2.bname AND b2.color = 'red' AND d2.day = r.day
+    )
+);
+
+/* 使用 NOT EXISTS */
+
+
+/* 使用 COUNT */
+
+
+
+/* 8. 針對出現在預約表裡的天，列出那天所有水手的平均分數。
+(小心重複的項目) */
+SELECT sub.day, AVG(sub.rat)
+FROM(
+    SELECT DISTINCT r.day, s.rating AS rat
+    FROM reservations r, sailors s
+    WHERE s.sname = r.sname
+) AS sub
+GROUP BY sub.day;
+
+
+/* 9. 列出最忙的一天，也就是最多預約的一天 */
+SELECT sub1.day
+# 算出每一天的預約個數
+FROM (
+    SELECT r1.day, COUNT(*) AS nums1
+    FROM reservations r1
+    GROUP BY r1.day
+) AS sub1
+WHERE sub1.nums1 = (
+    # 得到出預約個數的最大值
+    SELECT MAX(sub2.nums2)
+    FROM (
+        SELECT COUNT(*) AS nums2
+        FROM reservations r2
+        GROUP BY r2.day
+    ) AS sub2
+);
+
+
+# 歸納
+# 1. SELECT 後面才能加函數(如：MIN、COUNT)，WHERE 不行
+# 2. 若要對由兩個 table 以上所組合的 table 使用 GROUP BY，在語法上須先在 FROM 創造組合的 table，
+#    再用 GROUP BY(如：EX8)
