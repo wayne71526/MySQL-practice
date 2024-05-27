@@ -203,13 +203,29 @@ WHERE d1.day NOT IN(
     )
 );
 
+
 /* 使用 NOT EXISTS */
+SELECT d.day
+FROM days d
+WHERE NOT EXISTS(
+    SELECT b.bname
+    FROM boats b
+    WHERE b.color = 'red' AND NOT EXISTS(
+        SELECT r.bname
+        FROM reservations r
+        WHERE r.bname = b.bname AND r.day = d.day
+    )
+);
 
 
 /* 使用 COUNT */
 
-
-
+SELECT *
+FROM days d2, boats b1
+WHERE b1.color = 'red';
+SELECT *
+FROM boats b2, reservations r
+WHERE r.bname = b2.bname AND b2.color = 'red';
 /* 8. 針對出現在預約表裡的天，列出那天所有水手的平均分數。
 (小心重複的項目) */
 SELECT sub.day, AVG(sub.rat)
