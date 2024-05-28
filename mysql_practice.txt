@@ -219,13 +219,40 @@ WHERE NOT EXISTS(
 
 
 /* 使用 COUNT */
+# (1)
+SELECT sub1.day
+FROM (
+    SELECT DISTINCT sub.day, COUNT(sub.day) AS num
+    FROM (
+        SELECT DISTINCT r.day, b.bname, b.color
+        FROM reservations r , boats b
+        WHERE r.bname = b.bname AND b.color = "red"
+    ) AS sub
+    GROUP BY sub.day
+) AS sub1
+WHERE sub1.num = (
+    SELECT COUNT(*)
+    FROM boats b
+    WHERE b.color = 'red'
+    GROUP BY b.color
+);
 
-SELECT *
-FROM days d2, boats b1
-WHERE b1.color = 'red';
-SELECT *
-FROM boats b2, reservations r
-WHERE r.bname = b2.bname AND b2.color = 'red';
+# (2)
+SELECT d.day
+FROM days d
+WHERE (
+    # 算出沒被預約的個數
+    SELECT COUNT(*)
+    FROM boats b
+    WHERE b.color = "red" AND (
+        SELECT count(*)
+        FROM reservations r
+        WHERE r.day = d.day AND r.bname = b.bname
+    ) = 0 # =0 表示沒被預約
+) = 0;
+
+
+
 /* 8. 針對出現在預約表裡的天，列出那天所有水手的平均分數。
 (小心重複的項目) */
 SELECT sub.day, AVG(sub.rat)
