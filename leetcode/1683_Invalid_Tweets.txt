@@ -1,0 +1,6 @@
+SELECT sub.tweet_id
+FROM (
+    SELECT tweet_id, LENGTH(content) as content_len
+    FROM Tweets
+) as sub
+WHERE sub.content_len > 15;
