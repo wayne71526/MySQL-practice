@@ -1,0 +1,11 @@
+# solution
+SELECT stu.student_id, stu.student_name, sub.subject_name, IFNULL(e.attended_exams, 0) AS attended_exams
+FROM Students stu
+CROSS JOIN Subjects sub       # 每個表中的每一行與另一個表中的每一行配對
+LEFT JOIN (
+    SELECT e.student_id, e.subject_name, COUNT(*) AS attended_exams
+    FROM Examinations e
+    GROUP BY e.subject_name, e.student_id   # 相同的 subject_name 和 student_id 做 GROUP BY
+) AS e
+ON e.student_id = stu.student_id AND e.subject_name = sub.subject_name
+ORDER BY stu.student_id, sub.subject_name;     # 先按照 student_id 排序，再將相同 student_id 的資料依照 subject_name 排序
