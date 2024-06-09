@@ -1,0 +1,4 @@
+SELECT *
+FROM Cinema c
+Having c.id % 2 = 1 AND c.description <> 'boring'
+ORDER BY c.rating DESC;
