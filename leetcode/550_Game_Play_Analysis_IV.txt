@@ -1,0 +1,27 @@
+# solution 1
+SELECT ROUND(COUNT(CASE WHEN DATEDIFF(a1.event_date, a2.event_date) = -1 THEN 1 END) / 
+             COUNT(DISTINCT a1.player_id),
+             2) AS fraction
+FROM Activity a1
+LEFT JOIN Activity a2
+ON a1.player_id = a2.player_id
+WHERE a1.event_date = (
+    SELECT MIN(a3.event_date)
+    FROM Activity a3
+    WHERE a3.player_id = a1.player_id
+);
+
+
+# solution 2
+SELECT ROUND(SUM(sub.d) / COUNT(DISTINCT sub.player_id), 2) AS fraction
+FROM (
+    SELECT player_id,
+        DATEDIFF(event_date, MIN(event_date) OVER(PARTITION BY player_id)) = 1 AS d
+    FROM Activity
+) AS sub;
+
+
+# DATEDIFF(d1, d2)：d1 - d2(相差天數)
+# OVER(PARTITION BY player_id)：計算每個玩家第一次事件的日期
+# datediff(event_date, min(event_date) over(partition by player_id))：計算每個事件日期與該玩家第一次事件日期之間的天數差
+# datediff(event_date, min(event_date) over(partition by player_id)) = 1：True，輸出為 1；False，輸出為 0
