@@ -1,0 +1,11 @@
+# Write your MySQL query statement below
+SELECT sub.person_name
+# 創造有累積重量的 table
+FROM (
+    SELECT person_name, SUM(weight) OVER(ORDER BY turn) AS cum_weight
+    FROM Queue
+) AS sub
+WHERE sub.cum_weight <= 1000
+# 取最後一筆資料
+ORDER BY sub.cum_weight DESC
+LIMIT 1;
