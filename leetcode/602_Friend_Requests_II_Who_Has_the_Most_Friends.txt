@@ -1,0 +1,53 @@
+# solution 1
+with User_id AS (
+    (
+        SELECT DISTINCT requester_id AS id
+        FROM RequestAccepted
+    )
+    UNION
+    (
+        SELECT DISTINCT accepter_id AS id
+        FROM RequestAccepted
+    )
+)
+
+SELECT u.id, COUNT(*) AS num
+FROM User_id u
+LEFT JOIN RequestAccepted r
+ON u.id = r.requester_id or u.id = accepter_id
+GROUP BY u.id
+ORDER BY num DESC
+LIMIT 1
+
+
+# solution 2
+with User_id AS (
+    (
+        SELECT DISTINCT requester_id AS id
+        FROM RequestAccepted
+    )
+    UNION
+    (
+        SELECT DISTINCT accepter_id AS id
+        FROM RequestAccepted
+    )
+)
+
+SELECT sub.id, sub.num AS num
+FROM (
+    SELECT u.id, COUNT(*) AS num
+    FROM User_id u
+    LEFT JOIN RequestAccepted r
+    ON u.id = r.requester_id or u.id = accepter_id
+    GROUP BY u.id
+) AS sub
+WHERE num = (
+    SELECT MAX(sub1.num)
+    FROM (
+        SELECT u.id, COUNT(*) AS num
+        FROM User_id u
+        LEFT JOIN RequestAccepted r
+        ON u.id = r.requester_id or u.id = accepter_id
+        GROUP BY u.id
+    ) AS sub1
+)
